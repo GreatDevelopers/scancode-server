@@ -12,8 +12,12 @@ from scanapp.forms import URLScanForm
 
 from scanapp.tasks import scan_code_async
 from scanapp.tasks import apply_scan_async
+from scanapp.tasks import InsertIntoDB
 
 from scanapp.models import CeleryScan
+from scanapp.models import ScanInfo
+from scanapp.models import CodeInfo
+from scanapp.models import ScanResult
 
 class LocalUploadView(FormView):
     template_name = 'scanapp/localupload.html'
@@ -24,16 +28,25 @@ class LocalUploadView(FormView):
 
         if form.is_valid():
             f = request.FILES['upload_from_local']
-            fs = FileSystemStorage()
+            fs = FileSystemStorage('media/AnonymousUser/')
             filename = fs.save(f.name, f)
-
-            celery_scan = CeleryScan(scan_results='', is_complete=False)
-            celery_scan.save()
-
-            scan_id = celery_scan.scan_id
             
-            path = 'media/' + str(filename)
-            result = apply_scan_async.delay(path, scan_id)
+            scan_type = 'localscan'
+
+            # Create an Instance of InsertIntoDB
+            insert_into_db = InsertIntoDB()
+
+            # call the create_scan_id function
+            scan_id = insert_into_db.create_scan_id(scan_type=scan_type)
+
+            # different paths for both anonymous and registered users
+            if(str(request.user) == 'AnonymousUser'):
+                path = 'media/AnonymousUser/' + str(filename)
+
+            else:
+                path = 'media/user/' + str(request.user) + '/' + str(filename)
+            # call the celery function to apply the scan
+            apply_scan_async.delay(path, scan_id, scan_type=scan_type)
  
             # return the response as HttpResponse
             return HttpResponseRedirect('/resultscan/' + str(scan_id))
@@ -63,9 +76,12 @@ class URLFormViewCelery(FormView):
 class ScanResults(TemplateView):
     template_name = 'scanapp/scanresult.html'
     def get(self, request, *args, **kwargs):
-        celery_scan = CeleryScan.objects.get(scan_id=kwargs['pk'])
-        result = 'Please wait... Your tasks are in the queue.<br/> Reload in 5-10 minutes'
-        if celery_scan.is_complete == True:
-            result = celery_scan.scan_results
+        #celery_scan = CeleryScan.objects.get(scan_id=kwargs['pk'])
+        scan_info = ScanInfo.objects.get(pk=kwargs['pk'])
+        result = 'Please wait... Your tasks are in the queue.\n Reload in 5-10 minutes'
+        if scan_info.is_complete == True:
+            code_info = CodeInfo.objects.get(scan_info=scan_info)
+            scan_result = ScanResult.objects.get(code_info=code_info)
+            result = scan_result.scanned_json_result
 
         return render(request, 'scanapp/scanresults.html', context = {'result': result})
