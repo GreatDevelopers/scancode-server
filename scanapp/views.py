@@ -68,6 +68,7 @@ class LocalUploadView(FormView):
 
             else:
                 path = 'media/user/' + str(request.user) + '/' + str(filename)
+                
             folder_name = filename,
             URL = None
             # call the celery function to apply the scan

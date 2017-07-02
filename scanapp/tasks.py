@@ -384,6 +384,6 @@ class InsertIntoDB(object):
                 scan_error = scan_error
             )
             scan_error.save()
-
+            
         except:
             print 'Database error at model ScanError'

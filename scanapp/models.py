@@ -141,6 +141,15 @@ class MatchedRuleLicenses(models.Model):
     matched_rule = models.ForeignKey(MatchedRule)
     license = models.CharField(max_length=200)
 
+
+class MatchedRuleLicenses(models.Model):
+    def __str__(self):
+        return self.license
+
+    matched_rule = models.ForeignKey(MatchedRule)
+    license = models.CharField(max_length=200)
+
+
 class Copyright(models.Model):
     def __str__(self):
         return self.start_line
